@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.project_manage.mapper.ChangeRequestMapper">
+
+    <resultMap type="com.ruoyi.project_manage.domain.ChangeRequest" id="ChangeRequestResult">
+        <id property="id" column="id"/>
+        <result property="projectId" column="project_id"/>
+        <result property="changeNo" column="change_no"/>
+        <result property="changeType" column="change_type"/>
+        <result property="changeLevel" column="change_level"/>
+        <result property="wbsId" column="wbs_id"/>
+        <result property="wbsName" column="wbs_name"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="reason" column="reason"/>
+        <result property="impact" column="impact"/>
+        <result property="oldValue" column="old_value"/>
+        <result property="newValue" column="new_value"/>
+        <result property="status" column="status"/>
+        <result property="applicantId" column="applicant_id"/>
+        <result property="applicantName" column="applicant_name"/>
+        <result property="applyTime" column="apply_time"/>
+        <result property="approverId" column="approver_id"/>
+        <result property="approverName" column="approver_name"/>
+        <result property="approveTime" column="approve_time"/>
+        <result property="approveOpinion" column="approve_opinion"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <sql id="selectChangeRequestVo">
+        SELECT c.id, c.project_id, c.change_no, c.change_type, c.change_level,
+               c.wbs_id, w.name as wbs_name,
+               c.title, c.content, c.reason, c.impact, c.old_value, c.new_value,
+               c.status, c.applicant_id, u1.user_name as applicant_name, c.apply_time,
+               c.approver_id, u2.user_name as approver_name, c.approve_time, c.approve_opinion,
+               c.create_by, c.create_time, c.update_by, c.update_time, c.remark, c.del_flag
+        FROM project_manage_change c
+        LEFT JOIN project_manage_wbs w ON c.wbs_id = w.id AND w.del_flag = '0'
+        LEFT JOIN sys_user u1 ON c.applicant_id = u1.user_id AND u1.del_flag = '0'
+        LEFT JOIN sys_user u2 ON c.approver_id = u2.user_id AND u2.del_flag = '0'
+    </sql>
+
+    <select id="selectChangeRequestList" resultMap="ChangeRequestResult">
+        <include refid="selectChangeRequestVo"/>
+        <where>
+            c.del_flag = '0'
+            <if test="query.projectId != null">
+                AND c.project_id = #{query.projectId}
+            </if>
+            <if test="query.changeNo != null and query.changeNo != ''">
+                AND c.change_no LIKE CONCAT('%', #{query.changeNo}, '%')
+            </if>
+            <if test="query.title != null and query.title != ''">
+                AND c.title LIKE CONCAT('%', #{query.title}, '%')
+            </if>
+            <if test="query.changeType != null and query.changeType != ''">
+                AND c.change_type = #{query.changeType}
+            </if>
+            <if test="query.changeLevel != null">
+                AND c.change_level = #{query.changeLevel}
+            </if>
+            <if test="query.status != null">
+                AND c.status = #{query.status}
+            </if>
+            <if test="query.applicantId != null">
+                AND c.applicant_id = #{query.applicantId}
+            </if>
+            <if test="query.applyTimeBegin != null">
+                AND c.apply_time &gt;= #{query.applyTimeBegin}
+            </if>
+            <if test="query.applyTimeEnd != null">
+                AND c.apply_time &lt;= #{query.applyTimeEnd}
+            </if>
+            <!-- 数据权限过滤 -->
+            ${params.dataScope}
+        </where>
+        ORDER BY c.create_time DESC
+    </select>
+
+    <select id="selectChangeRequestById" resultMap="ChangeRequestResult">
+        <include refid="selectChangeRequestVo"/>
+        WHERE c.id = #{id} AND c.del_flag = '0'
+    </select>
+
+    <select id="checkChangeNoUnique" resultMap="ChangeRequestResult">
+        <include refid="selectChangeRequestVo"/>
+        WHERE c.change_no = #{changeNo} AND c.del_flag = '0' LIMIT 1
+    </select>
+
+</mapper>

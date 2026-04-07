@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.project_manage.mapper.ProjectMemberMapper">
+
+    <resultMap type="com.ruoyi.project_manage.domain.ProjectMember" id="ProjectMemberResult">
+        <id property="id" column="id"/>
+        <result property="projectId" column="project_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="userName" column="user_name"/>
+        <result property="nickName" column="nick_name"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <sql id="selectProjectMemberVo">
+        SELECT pm.id, pm.project_id, pm.user_id, u.user_name, u.nick_name,
+               pm.create_by, pm.create_time, pm.del_flag
+        FROM project_manage_member pm
+        LEFT JOIN sys_user u ON pm.user_id = u.user_id AND u.del_flag = '0'
+    </sql>
+
+    <select id="selectByProjectId" resultMap="ProjectMemberResult">
+        <include refid="selectProjectMemberVo"/>
+        WHERE pm.project_id = #{projectId} AND pm.del_flag = '0'
+    </select>
+
+    <insert id="batchInsert">
+        INSERT INTO project_manage_member (project_id, user_id, create_by, create_time, del_flag)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.projectId}, #{item.userId}, #{item.createBy}, NOW(), '0')
+        </foreach>
+    </insert>
+
+    <update id="deleteByProjectId">
+        UPDATE project_manage_member
+        SET del_flag = '1',
+            update_time = NOW()
+        WHERE project_id = #{projectId} AND del_flag = '0'
+    </update>
+
+</mapper>

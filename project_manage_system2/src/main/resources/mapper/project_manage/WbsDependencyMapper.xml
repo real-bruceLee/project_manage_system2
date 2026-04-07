@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.project_manage.mapper.WbsDependencyMapper">
+
+    <resultMap type="com.ruoyi.project_manage.domain.WbsDependency" id="WbsDependencyResult">
+        <id property="id" column="id"/>
+        <result property="taskId" column="task_id"/>
+        <result property="preTaskId" column="pre_task_id"/>
+        <result property="dependType" column="depend_type"/>
+        <result property="delayDays" column="delay_days"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <sql id="selectWbsDependencyVo">
+        SELECT d.id, d.task_id, d.pre_task_id, d.depend_type, d.delay_days,
+               d.create_by, d.create_time, d.del_flag
+        FROM project_manage_wbs_dependency d
+    </sql>
+
+    <select id="selectByTaskId" resultMap="WbsDependencyResult">
+        <include refid="selectWbsDependencyVo"/>
+        WHERE d.task_id = #{taskId} AND d.del_flag = '0'
+    </select>
+
+    <select id="selectByPreTaskId" resultMap="WbsDependencyResult">
+        <include refid="selectWbsDependencyVo"/>
+        WHERE d.pre_task_id = #{preTaskId} AND d.del_flag = '0'
+    </select>
+
+    <select id="checkCircularDependency" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM project_manage_wbs_dependency
+        WHERE task_id = #{preTaskId} AND pre_task_id = #{taskId} AND del_flag = '0'
+    </select>
+
+    <insert id="batchInsert">
+        INSERT INTO project_manage_wbs_dependency (task_id, pre_task_id, depend_type, delay_days, create_by, create_time, del_flag)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.taskId}, #{item.preTaskId}, #{item.dependType}, #{item.delayDays}, #{item.createBy}, NOW(), '0')
+        </foreach>
+    </insert>
+
+    <update id="deleteByTaskId">
+        UPDATE project_manage_wbs_dependency
+        SET del_flag = '1',
+            update_time = NOW()
+        WHERE task_id = #{taskId} AND del_flag = '0'
+    </update>
+
+    <update id="deleteByProjectId">
+        UPDATE project_manage_wbs_dependency d
+        SET d.del_flag = '1',
+            d.update_time = NOW()
+        WHERE EXISTS (
+            SELECT 1 FROM project_manage_wbs w
+            WHERE w.id = d.task_id AND w.project_id = #{projectId} AND w.del_flag = '0'
+        ) AND d.del_flag = '0'
+    </update>
+
+</mapper>

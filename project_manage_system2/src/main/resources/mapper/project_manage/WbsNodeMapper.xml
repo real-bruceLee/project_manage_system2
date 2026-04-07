@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.project_manage.mapper.WbsNodeMapper">
+
+    <resultMap type="com.ruoyi.project_manage.domain.WbsNode" id="WbsNodeResult">
+        <id property="id" column="id"/>
+        <result property="projectId" column="project_id"/>
+        <result property="code" column="code"/>
+        <result property="name" column="name"/>
+        <result property="type" column="type"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="principalId" column="principal_id"/>
+        <result property="principalName" column="principal_name"/>
+        <result property="planStartTime" column="plan_start_time"/>
+        <result property="planEndTime" column="plan_end_time"/>
+        <result property="actualStartTime" column="actual_start_time"/>
+        <result property="actualEndTime" column="actual_end_time"/>
+        <result property="duration" column="duration"/>
+        <result property="progress" column="progress"/>
+        <result property="status" column="status"/>
+        <result property="description" column="description"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <sql id="selectWbsNodeVo">
+        SELECT w.id, w.project_id, w.code, w.name, w.type, w.parent_id, w.sort_order,
+               w.principal_id, u.user_name as principal_name,
+               w.plan_start_time, w.plan_end_time, w.actual_start_time, w.actual_end_time,
+               w.duration, w.progress, w.status, w.description,
+               w.create_by, w.create_time, w.update_by, w.update_time, w.remark, w.del_flag
+        FROM project_manage_wbs w
+        LEFT JOIN sys_user u ON w.principal_id = u.user_id AND u.del_flag = '0'
+    </sql>
+
+    <select id="selectWbsTreeByProjectId" resultMap="WbsNodeResult">
+        <include refid="selectWbsNodeVo"/>
+        WHERE w.project_id = #{projectId} AND w.del_flag = '0'
+        ORDER BY w.parent_id ASC, w.sort_order ASC, w.create_time ASC
+    </select>
+
+    <select id="selectWbsNodeById" resultMap="WbsNodeResult">
+        <include refid="selectWbsNodeVo"/>
+        WHERE w.id = #{id} AND w.del_flag = '0'
+    </select>
+
+    <select id="checkCodeUnique" resultMap="WbsNodeResult">
+        <include refid="selectWbsNodeVo"/>
+        WHERE w.code = #{code} AND w.project_id = #{projectId} AND w.del_flag = '0' LIMIT 1
+    </select>
+
+    <select id="selectByParentId" resultMap="WbsNodeResult">
+        <include refid="selectWbsNodeVo"/>
+        WHERE w.parent_id = #{parentId} AND w.del_flag = '0'
+        ORDER BY w.sort_order ASC, w.create_time ASC
+    </select>
+
+    <update id="deleteByProjectId">
+        UPDATE project_manage_wbs
+        SET del_flag = '1',
+            update_time = NOW()
+        WHERE project_id = #{projectId} AND del_flag = '0'
+    </update>
+
+    <update id="updateSortOrder">
+        UPDATE project_manage_wbs
+        SET sort_order = #{sortOrder},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateParentId">
+        UPDATE project_manage_wbs
+        SET parent_id = #{parentId},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

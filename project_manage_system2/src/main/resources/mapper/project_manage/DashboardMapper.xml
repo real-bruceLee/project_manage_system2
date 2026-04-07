@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.project_manage.mapper.DashboardMapper">
+
+    <resultMap type="java.util.HashMap" id="StatisticsResult">
+        <result column="cnt" property="cnt" javaType="java.lang.Integer"/>
+    </resultMap>
+
+    <resultMap type="com.ruoyi.project_manage.domain.vo.TaskOverviewVO" id="TaskOverviewResult">
+        <id property="taskId" column="task_id"/>
+        <result property="taskName" column="task_name"/>
+        <result property="taskCode" column="task_code"/>
+        <result property="projectId" column="project_id"/>
+        <result property="projectName" column="project_name"/>
+        <result property="principalId" column="principal_id"/>
+        <result property="principalName" column="principal_name"/>
+        <result property="planStartTime" column="plan_start_time"/>
+        <result property="planEndTime" column="plan_end_time"/>
+        <result property="progress" column="progress"/>
+        <result property="status" column="status"/>
+    </resultMap>
+
+    <!-- 获取项目统计 -->
+    <select id="selectProjectStatistics" resultType="java.util.HashMap">
+        SELECT
+            COUNT(*) as total_projects,
+            SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as active_projects,
+            SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as archived_projects,
+            SUM(CASE WHEN status = 0 AND end_time &lt; CURDATE() THEN 1 ELSE 0 END) as delayed_projects
+        FROM project_manage_info
+        WHERE del_flag = '0'
+    </select>
+
+    <!-- 获取任务统计 -->
+    <select id="selectTaskStatistics" resultType="java.util.HashMap">
+        SELECT
+            COUNT(*) as total_tasks,
+            SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as not_start_tasks,
+            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as in_progress_tasks,
+            SUM(CASE WHEN status = 5 THEN 1 ELSE 0 END) as completed_tasks,
+            SUM(CASE WHEN status IN (1, 4, 6) THEN 1 ELSE 0 END) as delayed_tasks,
+            SUM(CASE WHEN status = 7 THEN 1 ELSE 0 END) as paused_tasks
+        FROM project_manage_wbs
+        WHERE del_flag = '0'
+        <if test="projectId != null">
+            AND project_id = #{projectId}
+        </if>
+    </select>
+
+    <!-- 获取进度分布 -->
+    <select id="selectProgressDistribution" resultType="java.util.HashMap">
+        SELECT
+            CASE
+                WHEN progress = 0 THEN '未开始'
+                WHEN progress &gt; 0 AND progress &lt; 25 THEN '0-25%'
+                WHEN progress &gt;= 25 AND progress &lt; 50 THEN '25-50%'
+                WHEN progress &gt;= 50 AND progress &lt; 75 THEN '50-75%'
+                WHEN progress &gt;= 75 AND progress &lt; 100 THEN '75-100%'
+                WHEN progress = 100 THEN '已完成'
+            END as progress_range,
+            COUNT(*) as count
+        FROM project_manage_wbs
+        WHERE del_flag = '0'
+        <if test="projectId != null">
+            AND project_id = #{projectId}
+        </if>
+        GROUP BY progress_range
+    </select>
+
+    <!-- 获取风险预警统计 -->
+    <select id="selectRiskWarningStats" resultType="java.util.HashMap">
+        SELECT
+            CASE
+                WHEN DATEDIFF(plan_end_time, CURDATE()) &lt;= 3 AND progress &lt; 100 THEN 1
+                WHEN DATEDIFF(plan_end_time, CURDATE()) &lt;= 7 AND progress &lt; 80 THEN 2
+                WHEN DATEDIFF(plan_end_time, CURDATE()) &lt;= 14 AND progress &lt; 60 THEN 3
+                ELSE 0
+            END as warning_level,
+            COUNT(*) as count
+        FROM project_manage_wbs
+        WHERE del_flag = '0'
+        AND status IN (0, 2)
+        <if test="projectId != null">
+            AND project_id = #{projectId}
+        </if>
+        GROUP BY warning_level
+        HAVING warning_level &gt; 0
+    </select>
+
+    <!-- 获取近期任务列表 -->
+    <select id="selectRecentTasks" resultMap="TaskOverviewResult">
+        SELECT
+            w.id as task_id,
+            w.name as task_name,
+            w.code as task_code,
+            w.project_id,
+            p.name as project_name,
+            w.principal_id,
+            u.user_name as principal_name,
+            w.plan_start_time,
+            w.plan_end_time,
+            w.progress,
+            w.status
+        FROM project_manage_wbs w
+        LEFT JOIN project_manage_info p ON w.project_id = p.id AND p.del_flag = '0'
+        LEFT JOIN sys_user u ON w.principal_id = u.user_id AND u.del_flag = '0'
+        WHERE w.del_flag = '0'
+        <if test="projectId != null">
+            AND w.project_id = #{projectId}
+        </if>
+        ORDER BY w.update_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 获取延期任务列表 -->
+    <select id="selectDelayedTasks" resultMap="TaskOverviewResult">
+        SELECT
+            w.id as task_id,
+            w.name as task_name,
+            w.code as task_code,
+            w.project_id,
+            p.name as project_name,
+            w.principal_id,
+            u.user_name as principal_name,
+            w.plan_start_time,
+            w.plan_end_time,
+            w.progress,
+            w.status
+        FROM project_manage_wbs w
+        LEFT JOIN project_manage_info p ON w.project_id = p.id AND p.del_flag = '0'
+        LEFT JOIN sys_user u ON w.principal_id = u.user_id AND u.del_flag = '0'
+        WHERE w.del_flag = '0'
+        AND w.status IN (1, 4, 6)
+        <if test="projectId != null">
+            AND w.project_id = #{projectId}
+        </if>
+        ORDER BY w.plan_end_time ASC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
